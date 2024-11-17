@@ -9,6 +9,8 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerEntity;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -59,6 +61,15 @@ public class WalkingBlockEntity extends Monster {
     public void recreateFromPacket(ClientboundAddEntityPacket packet) {
         super.recreateFromPacket(packet);
         this.blockState = Block.stateById(packet.getData());
+    }
+
+    @Override
+    protected void dropAllDeathLoot(@NotNull ServerLevel level, @NotNull DamageSource damageSource) {
+        super.dropAllDeathLoot(level, damageSource);
+
+        if (this.blockState != null) {
+            this.spawnAtLocation(level, this.blockState.getBlock());
+        }
     }
 
     public static AttributeSupplier.Builder createAttributes() {
