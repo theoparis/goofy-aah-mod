@@ -1,10 +1,14 @@
 package com.theoparis.goofyaahmod.entity;
 
-import com.theoparis.goofyaahmod.GoofyAahMod;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -13,6 +17,7 @@ import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,25 +34,31 @@ public class WalkingBlockEntity extends Monster {
     }
 
     @Override
-    public void load(@NotNull CompoundTag compoundTag) {
-        super.load(compoundTag);
+    public void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
+        super.addAdditionalSaveData(compoundTag);
 
-        if (compoundTag.contains("blockState"))
-            this.blockState = BlockState.CODEC.parse(NbtOps.INSTANCE, compoundTag.get("blockState"))
-                    .resultOrPartial(GoofyAahMod.LOGGER::error)
-                    .orElse(null);
+        if (this.blockState != null) {
+            compoundTag.put("BlockState", NbtUtils.writeBlockState(this.blockState));
+        }
     }
 
     @Override
-    public boolean save(@NotNull CompoundTag compoundTag) {
+    public Packet<ClientGamePacketListener> getAddEntityPacket(@NotNull ServerEntity entity) {
+        return new ClientboundAddEntityPacket(this, entity, Block.getId(this.blockState));
+    }
 
-        if (this.blockState != null) {
-            var blockStateTag = BlockState.CODEC.encodeStart(NbtOps.INSTANCE, this.blockState);
-            if (blockStateTag.result().isPresent())
-                compoundTag.put("blockState", blockStateTag.result().get());
-        }
+    @Override
+    public void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
+        super.readAdditionalSaveData(compoundTag);
 
-        return super.save(compoundTag);
+        if (compoundTag.contains("BlockState"))
+            this.blockState = NbtUtils.readBlockState(this.level().holderLookup(Registries.BLOCK), compoundTag.getCompound("BlockState"));
+    }
+
+    @Override
+    public void recreateFromPacket(ClientboundAddEntityPacket packet) {
+        super.recreateFromPacket(packet);
+        this.blockState = Block.stateById(packet.getData());
     }
 
     public static AttributeSupplier.Builder createAttributes() {

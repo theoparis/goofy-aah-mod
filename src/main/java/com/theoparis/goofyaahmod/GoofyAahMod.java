@@ -35,6 +35,7 @@ public class GoofyAahMod {
             () ->
                     EntityType.Builder.of(WalkingBlockEntity::new, MobCategory.MISC)
                             .sized(0.6F, 1.95F)
+                            .noLootTable()
                             .build(
                                     ResourceKey.create(
                                             Registries.ENTITY_TYPE,
